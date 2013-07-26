@@ -9,9 +9,8 @@
 
 #define SEGUE_ID_DETAIL @"showDetail"
 
+@class RSSItem;
+
 @interface DetailViewController : UIViewController
-
-@property (strong, nonatomic) id detailItem;
-
-@property (weak, nonatomic) IBOutlet UILabel *detailDescriptionLabel;
+@property (strong, nonatomic) RSSItem *rssItem;
 @end

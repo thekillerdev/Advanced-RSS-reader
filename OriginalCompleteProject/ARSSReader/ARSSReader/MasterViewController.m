@@ -40,7 +40,7 @@
 {
     [super viewDidLoad];
     
-    self.title = @"Advanced RSS Reader";
+    self.title = @"Feed";
     
     self.tableView.tableHeaderView = [[TableHeaderView alloc] initWithText:@"fetching rss feed"];
     
@@ -110,21 +110,29 @@
 
 -(CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    RSSItem *item = [self.rssItems objectAtIndex:indexPath.row];
+    RSSItem *item = self.rssItems[indexPath.row];
     CGRect cellMessageRect = [item.cellMessage boundingRectWithSize:CGSizeMake(200,10000)
                                                             options:NSStringDrawingUsesLineFragmentOrigin
                                                             context:nil];
     return cellMessageRect.size.height;
 }
 
+#pragma mark - TableView Delegate
+-(void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    RSSItem *item = self.rssItems[indexPath.row];
+    [self performSegueWithIdentifier:SEGUE_ID_DETAIL
+                              sender:item];
+}
+
 - (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender
 {
+    NSString *errorMessage = @"Was expecting an RSS item in MasterVC prepare for segue";
+    NSAssert([sender isKindOfClass:[RSSItem class]], errorMessage);
+    
     if ([segue.identifier isEqualToString:SEGUE_ID_DETAIL]) {
-        
-        NSIndexPath *indexPath = [self.tableView indexPathForSelectedRow];
-        RSSItem *object = self.rssItems[indexPath.row];
-        [[segue destinationViewController] setDetailItem:object];
-        
+        DetailViewController *detailVC = segue.destinationViewController;
+        detailVC.rssItem = sender;
     }
 }
 
