@@ -7,6 +7,8 @@
 
 #import <UIKit/UIKit.h>
 
+#define SEGUE_ID_DETAIL @"showDetail"
+
 @interface DetailViewController : UIViewController
 
 @property (strong, nonatomic) id detailItem;
