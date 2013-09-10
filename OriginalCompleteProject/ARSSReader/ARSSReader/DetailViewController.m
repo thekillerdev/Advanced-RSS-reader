@@ -9,26 +9,48 @@
 #import "RSSItem.h"
 
 @interface DetailViewController () <UIWebViewDelegate>
-{
-    IBOutlet UIWebView* webView;
-}
+@property (nonatomic, strong) UIWebView *webView;
 @end
 
 @implementation DetailViewController
 
--(void)viewDidAppear:(BOOL)animated
+#pragma mark - Getters
+-(UIWebView*)webView
 {
-    RSSItem* item = (RSSItem*)self.detailItem;
-    self.title = item.title;
-    webView.delegate = self;
-    NSURLRequest* articleRequest = [NSURLRequest requestWithURL: item.link];
-    webView.backgroundColor = [UIColor clearColor];
-    [webView loadRequest: articleRequest];
+    if (_webView == nil)
+    {
+        _webView = [[UIWebView alloc] init];
+        _webView.delegate = self;
+        _webView.backgroundColor = [UIColor clearColor];
+        _webView.scalesPageToFit = YES;
+    }
+    return _webView;
+}
+
+#pragma mark - Setters
+-(void)setRssItem:(RSSItem*)rssItem
+{
+    if (_rssItem != rssItem)
+    {
+        _rssItem = rssItem;
+    }
+    [self.webView loadRequest:[NSURLRequest requestWithURL: _rssItem.link]];
+}
+
+-(void)viewDidLoad
+{
+    [super viewDidLoad];
+    
+    self.title = self.rssItem.title;
+    
+    CGRect frame = self.view.bounds;
+    self.webView.frame = frame;
+    [self.view addSubview:self.webView];
 }
 
 -(void)viewDidDisappear:(BOOL)animated
 {
-    webView.delegate = nil;
+    self.webView.delegate = nil;
     [[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:NO];
 }
 

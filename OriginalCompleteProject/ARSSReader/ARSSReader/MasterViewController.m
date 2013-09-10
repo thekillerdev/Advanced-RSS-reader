@@ -5,53 +5,65 @@
 //  Created by Marin Todorov on 29/10/2012.
 //
 
+//Controllers
 #import "MasterViewController.h"
 #import "DetailViewController.h"
 
+//Views
 #import "TableHeaderView.h"
 
+//Other
 #import "RSSLoader.h"
 #import "RSSItem.h"
 
+#define FONT_REFRESH_CONTROL [UIFont fontWithName:@"Helvetica" size:11.0]
+
 @interface MasterViewController ()
-{
-    NSArray *_objects;
-    NSURL* feedURL;
-    UIRefreshControl* refreshControl;
-}
+@property (nonatomic, strong) NSArray *rssItems;
+@property (nonatomic, strong) NSURL *feedURL;
 @end
 
 @implementation MasterViewController
 
+#pragma mark - Getters
+-(NSURL*)feedURL
+{
+    if (_feedURL == nil)
+    {
+        _feedURL = [NSURL URLWithString:@"http://feeds.feedburner.com/TouchCodeMagazine"];
+    }
+    return _feedURL;
+}
+
+#pragma mark - View Management
 - (void)viewDidLoad
 {
     [super viewDidLoad];
     
-    //configuration
-    self.title = @"Advanced RSS Reader";
-    feedURL = [NSURL URLWithString:@"http://feeds.feedburner.com/TouchCodeMagazine"];
+    self.title = @"Feed";
     
-    //add refresh control to the table view
-    refreshControl = [[UIRefreshControl alloc] init];
+    self.tableView.tableHeaderView = [[TableHeaderView alloc] initWithText:@"fetching rss feed"];
+    
+    [self setupRefreshControl];
+    
+    [self refreshFeed];
+}
+
+-(void)setupRefreshControl
+{
+    UIRefreshControl *refreshControl = [[UIRefreshControl alloc] init];
     
     [refreshControl addTarget:self
                        action:@selector(refreshInvoked:forState:)
              forControlEvents:UIControlEventValueChanged];
     
-    NSString* fetchMessage = [NSString stringWithFormat:@"Fetching: %@",feedURL];
+    refreshControl.attributedTitle = [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"Fetching: %@", self.feedURL]
+                                                                     attributes:@{NSFontAttributeName:FONT_REFRESH_CONTROL}];
     
-    refreshControl.attributedTitle = [[NSAttributedString alloc] initWithString:fetchMessage
-                                                                     attributes:@{NSFontAttributeName:[UIFont fontWithName:@"Helvetica" size:11.0]}];
-    
-    [self.tableView addSubview: refreshControl];
-    
-    //add the header
-    self.tableView.tableHeaderView = [[TableHeaderView alloc] initWithText:@"fetching rss feed"];
-    
-    [self refreshFeed];
+    self.refreshControl = refreshControl;
 }
 
--(void) refreshInvoked:(id)sender forState:(UIControlState)state
+-(void)refreshInvoked:(id)sender forState:(UIControlState)state
 {
     [self refreshFeed];
 }
@@ -59,27 +71,21 @@
 -(void)refreshFeed
 {
     RSSLoader* rss = [[RSSLoader alloc] init];
-    [rss fetchRssWithURL:feedURL
+    
+    [rss fetchRssWithURL:self.feedURL
                 complete:^(NSString *title, NSArray *results) {
-
-                    //completed fetching the RSS
+                    
                     dispatch_async(dispatch_get_main_queue(), ^{
-                        
-                        //UI code on the main queue
                         [(TableHeaderView*)self.tableView.tableHeaderView setText:title];
-                        
-                        _objects = results;
+                        self.rssItems = results;
                         [self.tableView reloadData];
-                        
-                        // Stop refresh control
-                        [refreshControl endRefreshing];
+                        [self.refreshControl endRefreshing];
                     });
+                    
                 }];
-
 }
 
-#pragma mark - Table View
-
+#pragma mark - TableView DataSource
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView
 {
     return 1;
@@ -87,34 +93,46 @@
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
 {
-    return _objects.count;
+    return self.rssItems.count;
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"Cell" forIndexPath:indexPath];
-
-    RSSItem *object = _objects[indexPath.row];
+    RSSItem *object = self.rssItems[indexPath.row];
+    
+    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"Cell"
+                                                            forIndexPath:indexPath];
     cell.textLabel.attributedText = object.cellMessage;
     cell.textLabel.numberOfLines = 0;
+    
     return cell;
 }
 
 -(CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    RSSItem *item = [_objects objectAtIndex:indexPath.row];
+    RSSItem *item = self.rssItems[indexPath.row];
     CGRect cellMessageRect = [item.cellMessage boundingRectWithSize:CGSizeMake(200,10000)
                                                             options:NSStringDrawingUsesLineFragmentOrigin
                                                             context:nil];
     return cellMessageRect.size.height;
 }
 
+#pragma mark - TableView Delegate
+-(void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    RSSItem *item = self.rssItems[indexPath.row];
+    [self performSegueWithIdentifier:SEGUE_ID_DETAIL
+                              sender:item];
+}
+
 - (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender
 {
-    if ([[segue identifier] isEqualToString:@"showDetail"]) {
-        NSIndexPath *indexPath = [self.tableView indexPathForSelectedRow];
-        RSSItem *object = _objects[indexPath.row];
-        [[segue destinationViewController] setDetailItem:object];
+    NSString *errorMessage = @"Was expecting an RSS item in MasterVC prepare for segue";
+    NSAssert([sender isKindOfClass:[RSSItem class]], errorMessage);
+    
+    if ([segue.identifier isEqualToString:SEGUE_ID_DETAIL]) {
+        DetailViewController *detailVC = segue.destinationViewController;
+        detailVC.rssItem = sender;
     }
 }
 
